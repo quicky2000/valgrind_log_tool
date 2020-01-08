@@ -22,6 +22,7 @@
 #include "xmlParser.h"
 #include "quicky_exception.h"
 #include <string>
+#include <map>
 
 namespace valgrind_log_tool
 {
@@ -48,6 +49,10 @@ namespace valgrind_log_tool
         void treat_errorcounts(const XMLNode & p_node);
 
       private:
+
+        typedef void (valgrind_log_parser::*t_method)(const XMLNode &);
+        typedef std::map<std::string, t_method> t_name_methods;
+        t_name_methods m_methods;
     };
 
     //-------------------------------------------------------------------------
@@ -74,6 +79,20 @@ namespace valgrind_log_tool
                                                               );
             }
         }
+
+        m_methods.insert(t_name_methods::value_type("valgrindoutput", &valgrind_log_parser::default_treat));
+        m_methods.insert(t_name_methods::value_type("protocolversion", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("protocoltool", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("preamble", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("pid", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("ppid", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("tool", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("args", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("status", &valgrind_log_parser::ignore_treat));
+        m_methods.insert(t_name_methods::value_type("error", &valgrind_log_parser::treat_error));
+        m_methods.insert(t_name_methods::value_type("errorcounts", &valgrind_log_parser::treat_errorcounts));
+        m_methods.insert(t_name_methods::value_type("suppcounts", &valgrind_log_parser::ignore_treat));
+
         treat(l_node);
     }
 
@@ -82,53 +101,11 @@ namespace valgrind_log_tool
     valgrind_log_parser::treat(const XMLNode & p_node)
     {
         std::string l_node_name{p_node.getName()};
-        if("valgrindoutput" == l_node_name)
+
+        t_name_methods::const_iterator l_method_iter = m_methods.find(l_node_name);
+        if(m_methods.end() != l_method_iter)
         {
-            default_treat(p_node);
-        }
-        else if("protocolversion" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("protocoltool" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("preamble" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("pid" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("ppid" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("tool" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("args" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("status" == l_node_name)
-        {
-            ignore_treat(p_node);
-        }
-        else if("error" == l_node_name)
-        {
-            treat_error(p_node);
-        }
-        else if("errorcounts" == l_node_name)
-        {
-            treat_errorcounts(p_node);
-        }
-        else if("suppcounts" == l_node_name)
-        {
-            ignore_treat(p_node);
+            (this->*(l_method_iter->second))(p_node);
         }
         else
         {
@@ -158,7 +135,7 @@ namespace valgrind_log_tool
     void
     valgrind_log_parser::treat_error(const XMLNode & p_node)
     {
-        //default_treat(p_node);
+       // default_treat(p_node);
     }
 
     //-------------------------------------------------------------------------
