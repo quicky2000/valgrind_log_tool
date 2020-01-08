@@ -16,13 +16,28 @@
       along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include "valgrind_log_parser.h"
 #include "quicky_exception.h"
 #include <iostream>
+#include <fstream>
+#include <cassert>
 
-int main()
+int main(int p_argc, char ** p_argv)
 {
     try
     {
+        assert(2 == p_argc);
+        std::string l_file_name{p_argv[1]};
+        std::ifstream l_input_file;
+        l_input_file.open(l_file_name);
+        if(!l_input_file.is_open())
+        {
+            throw quicky_exception::quicky_logic_exception("Unable to open file \"" + l_file_name +"\"", __LINE__, __FILE__);
+        }
+        l_input_file.close();
+
+        valgrind_log_tool::valgrind_log_parser l_parser(l_file_name);
+
     }
     catch(const quicky_exception::quicky_logic_exception & e)
     {

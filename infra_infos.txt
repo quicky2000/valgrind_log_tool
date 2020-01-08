@@ -1,4 +1,4 @@
-depend: quicky_exception
+depend: quicky_exception EXT_xmlParser
 MAIN_CFLAGS:-Wall -ansi -pedantic -g -std=c++11 -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -O3 -DNDEBUG
 ###########:-Wall -ansi -pedantic -g -std=c++11 -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -O0 -g
 CFLAGS:
