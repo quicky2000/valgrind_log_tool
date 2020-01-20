@@ -36,7 +36,8 @@ int main(int p_argc, char ** p_argv)
         }
         l_input_file.close();
 
-        valgrind_log_tool::valgrind_log_parser l_parser(l_file_name);
+        valgrind_log_tool::valgrind_log_content l_content;
+        valgrind_log_tool::valgrind_log_parser l_parser(l_file_name, l_content);
 
     }
     catch(const quicky_exception::quicky_logic_exception & e)

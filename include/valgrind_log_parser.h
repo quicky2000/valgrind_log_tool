@@ -21,13 +21,10 @@
 
 #include "xmlParser.h"
 #include "quicky_exception.h"
-#include "valgrind_error.h"
+#include "valgrind_log_content.h"
 #include <string>
-#include <map>
 #include <cassert>
 #include <iostream>
-#include <vector>
-#include <map>
 
 namespace valgrind_log_tool
 {
@@ -36,7 +33,9 @@ namespace valgrind_log_tool
       public:
 
         inline
-        valgrind_log_parser(const std::string & p_log_name);
+        valgrind_log_parser( const std::string & p_log_name
+                           , valgrind_log_content & p_content
+                           );
 
         inline
         ~valgrind_log_parser();
@@ -121,16 +120,18 @@ namespace valgrind_log_tool
         valgrind_frame * m_current_frame;
         std::pair<uint64_t, uint32_t> m_current_pair;
 
-        std::vector<valgrind_error *> m_errors;
-        std::map<uint64_t, uint32_t> m_error_counts;
+        valgrind_log_content & m_content;
     };
 
     //-------------------------------------------------------------------------
-    valgrind_log_parser::valgrind_log_parser(const std::string & p_log_name)
+    valgrind_log_parser::valgrind_log_parser( const std::string & p_log_name
+                                            , valgrind_log_content & p_content
+                                            )
     : m_current_error(nullptr)
     , m_current_xwhat(nullptr)
     , m_current_frame(nullptr)
     , m_current_pair{0,0}
+    , m_content(p_content)
     {
         XMLResults l_err= {eXMLErrorNone,0,0};
         XMLNode l_node = XMLNode::parseFile( p_log_name.c_str(), "valgrindoutput", &l_err);
@@ -230,7 +231,7 @@ namespace valgrind_log_tool
     {
         m_current_error = new valgrind_error();
         default_treat(p_node);
-        m_errors.push_back(m_current_error);
+        m_content.add_error(*m_current_error);
         m_current_error = nullptr;
     }
 
@@ -315,10 +316,6 @@ namespace valgrind_log_tool
     //-------------------------------------------------------------------------
     valgrind_log_parser::~valgrind_log_parser()
     {
-        for(auto l_iter:m_errors)
-        {
-            delete l_iter;
-        }
     }
 
     //-------------------------------------------------------------------------
@@ -462,7 +459,7 @@ namespace valgrind_log_tool
         std::string l_parent_name = p_node.getParentNode().getName();
         assert("errorcounts" == l_parent_name);
         default_treat(p_node);
-        m_error_counts.insert(m_current_pair);
+        m_content.add_error_count(m_current_pair.first, m_current_pair.second);
         m_current_pair = {0, 0};
     }
 
