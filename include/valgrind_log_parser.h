@@ -41,6 +41,8 @@ namespace valgrind_log_tool
         inline
         ~valgrind_log_parser();
 
+      private:
+
         inline
         void treat(const XMLNode & p_node);
 
@@ -109,8 +111,6 @@ namespace valgrind_log_tool
 
         inline
         void treat_count(const XMLNode & p_node);
-
-      private:
 
         typedef void (valgrind_log_parser::*t_method)(const XMLNode &);
         typedef std::map<std::string, t_method> t_name_methods;
