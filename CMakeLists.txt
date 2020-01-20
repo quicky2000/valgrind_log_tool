@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(MY_SOURCE_FILES
     src/main.cpp
     include/valgrind_log_parser.h
+    include/valgrind_error.h
+    include/valgrind_frame.h
+    include/valgrind_xwhat.h
    )
 
 
