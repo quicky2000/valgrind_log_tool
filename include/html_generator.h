@@ -60,6 +60,9 @@ namespace valgrind_log_tool
         std::string get_error_link(const valgrind_error & p_error) const;
 
         inline
+        void collect_kind_info(const valgrind_log_content & p_content);
+
+        inline
         void generate_html(const valgrind_error & p_error);
 
         inline
@@ -109,35 +112,7 @@ namespace valgrind_log_tool
         m_file << "<body>" << std::endl;
         m_file << "<H1>" << l_title << "</H1>" << std::endl;
 
-        m_kinds.clear();
-        const auto l_collect_kind = [&](const valgrind_error & p_error)
-        {
-            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
-        };
-        p_content.process_errors(l_collect_kind);
-
-        /**
-         * Number of occurence per kind
-         */
-        std::map<std::string, unsigned int> l_kind_number;
-        l_kind_number.clear();
-        for(const auto & l_iter: m_kinds)
-        {
-            l_kind_number[l_iter.first] = 0;
-        }
-
-        const auto l_count_kind = [&](const valgrind_error & p_error)
-        {
-            l_kind_number[p_error.get_kind()]++;
-        };
-
-        p_content.process_errors(l_count_kind);
-
-        m_sorted_kinds.clear();
-        for(const auto & l_iter:l_kind_number)
-        {
-            m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
-        }
+        collect_kind_info(p_content);
 
         m_file << "<H2>Encountered kinds</H2>" << std::endl;
         m_file << "<ul>" << std::endl;
@@ -282,6 +257,41 @@ namespace valgrind_log_tool
             m_file << "</li></ul>" << std::endl;
         }
 
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::collect_kind_info(const valgrind_log_content & p_content)
+    {
+        m_kinds.clear();
+        const auto l_collect_kind = [&](const valgrind_error & p_error)
+        {
+            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
+        };
+        p_content.process_errors(l_collect_kind);
+
+        /**
+         * Number of occurence per kind
+         */
+        std::map<std::string, unsigned int> l_kind_number;
+        l_kind_number.clear();
+        for(const auto & l_iter: m_kinds)
+        {
+            l_kind_number[l_iter.first] = 0;
+        }
+
+        const auto l_count_kind = [&](const valgrind_error & p_error)
+        {
+            l_kind_number[p_error.get_kind()]++;
+        };
+
+        p_content.process_errors(l_count_kind);
+
+        m_sorted_kinds.clear();
+        for(const auto & l_iter:l_kind_number)
+        {
+            m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
+        }
     }
 
 }
