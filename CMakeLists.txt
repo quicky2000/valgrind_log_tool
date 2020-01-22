@@ -11,6 +11,7 @@ set(MY_SOURCE_FILES
     include/valgrind_frame.h
     include/valgrind_xwhat.h
     include/valgrind_log_content.h
+    include/html_generator.h
    )
 
 

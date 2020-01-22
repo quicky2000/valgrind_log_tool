@@ -17,6 +17,7 @@
 */
 
 #include "valgrind_log_parser.h"
+#include "html_generator.h"
 #include "quicky_exception.h"
 #include <iostream>
 #include <fstream>
@@ -38,7 +39,8 @@ int main(int p_argc, char ** p_argv)
 
         valgrind_log_tool::valgrind_log_content l_content;
         valgrind_log_tool::valgrind_log_parser l_parser(l_file_name, l_content);
-
+        valgrind_log_tool::html_generator l_generator("valgrind.html");
+        l_generator.generate(l_content);
     }
     catch(const quicky_exception::quicky_logic_exception & e)
     {
