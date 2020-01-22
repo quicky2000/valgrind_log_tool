@@ -169,11 +169,11 @@ namespace valgrind_log_tool
         m_file << "Error <b>" << p_error.get_unique() << "</b>" << std::endl;
         m_file << "<ul>" << std::endl;
         m_file << "<li>Kind : <b>" << get_kind_link(p_error.get_kind()) << "</b></li>" << std::endl;
-        if("" != p_error.get_what())
+        if(!p_error.get_what().empty())
         {
             m_file << "<li>What : <b>" << p_error.get_what() << "</b></li>" << std::endl;
         }
-        if("" != p_error.get_aux_what())
+        if(!p_error.get_aux_what().empty())
         {
             m_file << "<li>Aux What : <b>" << p_error.get_aux_what() << "</b></li>" << std::endl;
         }
