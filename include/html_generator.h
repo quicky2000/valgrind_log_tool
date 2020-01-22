@@ -103,7 +103,7 @@ namespace valgrind_log_tool
         m_file << "<!DOCTYPE html>" << std::endl;
         m_file << "<html>" << std::endl;
         m_file << "<head>" << std::endl;
-        m_file << "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">" << std::endl;
+        m_file << R"(<meta http-equiv="Content-Type" content="text/html; charset=utf-8">)" << std::endl;
         m_file << "<title>" << l_title << "</title>" << std::endl;
         m_file << "</head>" << std::endl;
         m_file << "<body>" << std::endl;
