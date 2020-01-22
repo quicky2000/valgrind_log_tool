@@ -23,6 +23,7 @@
 #include <vector>
 #include <map>
 #include <cinttypes>
+#include <functional>
 
 namespace valgrind_log_tool
 {
@@ -37,6 +38,9 @@ namespace valgrind_log_tool
         void add_error_count( uint64_t p_unique
                             , uint32_t p_count
                             );
+
+        inline
+        void process_errors(const std::function<void(const valgrind_error&)> & p_func) const;
 
         inline
         ~valgrind_log_content();
@@ -69,6 +73,16 @@ namespace valgrind_log_tool
                                          )
     {
         m_error_counts.insert(std::pair<uint64_t, uint32_t>(p_unique, p_count));
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    valgrind_log_content::process_errors(const std::function<void(const valgrind_error &)> & p_func) const
+    {
+        for(auto l_iter: m_errors)
+        {
+            p_func(*l_iter);
+        }
     }
 }
 #endif //VALGRIND_LOG_TOOL_VALGRIND_LOG_CONTENT_H

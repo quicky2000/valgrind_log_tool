@@ -39,6 +39,15 @@ namespace valgrind_log_tool
         inline
         void set_leaked_blocks(uint32_t p_leaked_bytes);
 
+        inline
+        const std::string & get_text() const;
+
+        inline
+        uint32_t get_leaked_bytes() const;
+
+        inline
+        uint32_t get_leaked_blocks() const;
+
       private:
         std::string m_text;
         uint32_t m_leaked_bytes;
@@ -71,6 +80,27 @@ namespace valgrind_log_tool
     valgrind_xwhat::set_leaked_blocks(uint32_t p_leaked_bytes)
     {
         m_leaked_blocks = p_leaked_bytes;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_xwhat::get_text() const
+    {
+        return m_text;
+    }
+
+    //-------------------------------------------------------------------------
+    uint32_t
+    valgrind_xwhat::get_leaked_bytes() const
+    {
+        return m_leaked_bytes;
+    }
+
+    //-------------------------------------------------------------------------
+    uint32_t
+    valgrind_xwhat::get_leaked_blocks() const
+    {
+        return m_leaked_blocks;
     }
 
 }

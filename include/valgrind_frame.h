@@ -48,6 +48,24 @@ namespace valgrind_log_tool
         inline
         void set_line(uint32_t p_line);
 
+        inline
+        const uint64_t & get_ip() const;
+
+        inline
+        const std::string & get_obj() const;
+
+        inline
+        const std::string & get_fn() const;
+
+        inline
+        const std::string & get_dir() const;
+
+        inline
+        const std::string & get_file() const;
+
+        inline
+        const uint32_t & get_line() const;
+
       private:
         uint64_t m_ip;
         std::string m_obj;
@@ -105,6 +123,48 @@ namespace valgrind_log_tool
     valgrind_frame::set_line(uint32_t p_line)
     {
         m_line = p_line;
+    }
+
+    //-------------------------------------------------------------------------
+    const uint64_t &
+    valgrind_frame::get_ip() const
+    {
+        return m_ip;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_frame::get_obj() const
+    {
+        return m_obj;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_frame::get_fn() const
+    {
+        return m_fn;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_frame::get_dir() const
+    {
+        return m_dir;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_frame::get_file() const
+    {
+        return m_file;
+    }
+
+    //-------------------------------------------------------------------------
+    const uint32_t &
+    valgrind_frame::get_line() const
+    {
+        return m_line;
     }
 }
 #endif //VALGRIND_LOG_TOOL_VALGRIND_FRAME_H

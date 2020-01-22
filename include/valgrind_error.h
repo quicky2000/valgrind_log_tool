@@ -23,6 +23,8 @@
 #include "valgrind_xwhat.h"
 #include <cinttypes>
 #include <vector>
+#include <cassert>
+#include <functional>
 
 namespace valgrind_log_tool
 {
@@ -57,7 +59,32 @@ namespace valgrind_log_tool
         inline
         void add_frame(const valgrind_frame & p_frame);
 
+        inline
+        const uint64_t & get_unique() const;
+
+        inline
+        const uint64_t & get_tid() const;
+
+        inline
+        const std::string & get_kind() const;
+
+        inline
+        bool has_xwhat() const;
+
+        inline
+        const valgrind_xwhat & get_xwhat() const;
+
+        inline
+        const std::string & get_what() const;
+
+        inline
+        const std::string & get_aux_what() const;
+
+        inline
+        void process_stack(const std::function<void(const valgrind_frame&)> & p_func) const;
+
       private:
+
         uint64_t m_unique;
         uint64_t m_tid;
         std::string m_kind;
@@ -134,5 +161,66 @@ namespace valgrind_log_tool
     {
         m_xwhat = & p_xwhat;
     }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_error::get_kind() const
+    {
+        return m_kind;
+    }
+
+    //-------------------------------------------------------------------------
+    const uint64_t &
+    valgrind_error::get_unique() const
+    {
+        return m_unique;
+    }
+
+    //-------------------------------------------------------------------------
+    const uint64_t &
+    valgrind_error::get_tid() const
+    {
+        return m_tid;
+    }
+
+    //-------------------------------------------------------------------------
+    bool
+    valgrind_error::has_xwhat() const
+    {
+        return m_xwhat;
+    }
+
+    //-------------------------------------------------------------------------
+    const valgrind_xwhat &
+    valgrind_error::get_xwhat() const
+    {
+        assert(m_xwhat);
+        return *m_xwhat;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_error::get_what() const
+    {
+        return m_what;
+    }
+
+    //-------------------------------------------------------------------------
+    const std::string &
+    valgrind_error::get_aux_what() const
+    {
+        return m_aux_what;
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    valgrind_error::process_stack(const std::function<void(const valgrind_frame &)> & p_func) const
+    {
+        for(auto l_iter:m_stack)
+        {
+            p_func(*l_iter);
+        }
+    }
+
 }
 #endif //VALGRIND_LOG_TOOL_VALGRIND_ERROR_H
