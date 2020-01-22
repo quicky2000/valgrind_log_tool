@@ -121,7 +121,7 @@ namespace valgrind_log_tool
          */
         std::map<std::string, unsigned int> l_kind_number;
         l_kind_number.clear();
-        for(auto l_iter: m_kinds)
+        for(const auto & l_iter: m_kinds)
         {
             l_kind_number[l_iter.first] = 0;
         }
@@ -134,14 +134,14 @@ namespace valgrind_log_tool
         p_content.process_errors(l_count_kind);
 
         m_sorted_kinds.clear();
-        for(auto l_iter:l_kind_number)
+        for(const auto & l_iter:l_kind_number)
         {
             m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
         }
 
         m_file << "<H2>Encountered kinds</H2>" << std::endl;
         m_file << "<ul>" << std::endl;
-        for(auto l_iter: m_sorted_kinds)
+        for(const auto & l_iter: m_sorted_kinds)
         {
             m_file << "<li>" << get_kind_link(l_iter.second) << " : " << l_iter.first << "</li>" << std::endl;
         }
