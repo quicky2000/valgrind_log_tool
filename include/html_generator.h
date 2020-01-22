@@ -66,7 +66,17 @@ namespace valgrind_log_tool
         void generate_kinds_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
+
+        /**
+         * List of kind and associated id
+         */
         std::map<std::string, unsigned int> m_kinds;
+
+        /**
+         * Kind sorted per number of occurence
+         */
+        std::multimap<unsigned int, std::string> m_sorted_kinds;
+
     };
 
     //-------------------------------------------------------------------------
@@ -99,6 +109,43 @@ namespace valgrind_log_tool
         m_file << "<body>" << std::endl;
         m_file << "<H1>" << l_title << "</H1>" << std::endl;
 
+        m_kinds.clear();
+        const auto l_collect_kind = [&](const valgrind_error & p_error)
+        {
+            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
+        };
+        p_content.process_errors(l_collect_kind);
+
+        /**
+         * Number of occurence per kind
+         */
+        std::map<std::string, unsigned int> l_kind_number;
+        l_kind_number.clear();
+        for(auto l_iter: m_kinds)
+        {
+            l_kind_number[l_iter.first] = 0;
+        }
+
+        const auto l_count_kind = [&](const valgrind_error & p_error)
+        {
+            l_kind_number[p_error.get_kind()]++;
+        };
+
+        p_content.process_errors(l_count_kind);
+
+        m_sorted_kinds.clear();
+        for(auto l_iter:l_kind_number)
+        {
+            m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
+        }
+
+        m_file << "<H2>Encountered kinds</H2>" << std::endl;
+        m_file << "<ul>" << std::endl;
+        for(auto l_iter: m_sorted_kinds)
+        {
+            m_file << "<li>" << get_kind_link(l_iter.second) << " : " << l_iter.first << "</li>" << std::endl;
+        }
+        m_file << "</ul>" << std::endl;
 
         generate_kinds_html(p_content);
 
@@ -209,36 +256,12 @@ namespace valgrind_log_tool
     void
     html_generator::generate_kinds_html(const valgrind_log_content & p_content)
     {
-        m_kinds.clear();
-        std::map<std::string, unsigned int> l_kind_number;
-        const auto l_collect_kind = [&](const valgrind_error & p_error)
-        {
-            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
-            l_kind_number[p_error.get_kind()] = 0;
-        };
-
-        p_content.process_errors(l_collect_kind);
-
-        const auto l_count_kind = [&](const valgrind_error & p_error)
-        {
-            l_kind_number[p_error.get_kind()]++;
-        };
-
-        p_content.process_errors(l_count_kind);
-
-        std::multimap<unsigned int, std::string> m_sorted_kinds;
-        for(auto l_iter:l_kind_number)
-        {
-            m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
-        }
-
-        m_file << "<H2>Kind of encountered errors</H2>" << std::endl;
-
-        m_file << "<ul>" << std::endl;
+        m_file << "<H2>Errors per kind</H2>" << std::endl;
         for(auto l_iter: m_sorted_kinds)
         {
             bool l_first = true;
-            m_file << "<li>" << get_kind_link(l_iter.second) << std::endl;
+            m_file << "<hr id=\"" << get_kind_id(l_iter.second) << "\">" << std::endl;
+            m_file << "Errors of kind <b>" << l_iter.second << "</b>" << std::endl;
             const auto l_collecter_errors_per_kind = [&](const valgrind_error & p_error)
             {
                 if(l_iter.second == p_error.get_kind())
@@ -257,10 +280,7 @@ namespace valgrind_log_tool
             m_file << "<ul><li>" << std::endl;
             p_content.process_errors(l_collecter_errors_per_kind);
             m_file << "</li></ul>" << std::endl;
-
-            m_file << "</li>" << std::endl;
         }
-        m_file << "</ul>" << std::endl;
 
     }
 
