@@ -42,8 +42,28 @@ namespace valgrind_log_tool
 
       private:
 
+        /**
+         * Compute kind id that will be uased as local anchor
+         * @param p_kind string representing error kind
+         * @return string representing kind id
+         */
+        inline
+        std::string get_kind_id(const std::string & p_kind) const;
+
+        inline
+        std::string get_kind_link(const std::string & p_kind) const;
+
+        inline
+        std::string get_error_id(const valgrind_error & p_error) const;
+
+        inline
+        std::string get_error_link(const valgrind_error & p_error) const;
+
         inline
         void generate_html(const valgrind_error & p_error);
+
+        inline
+        void generate_kinds_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
         std::map<std::string, unsigned int> m_kinds;
@@ -69,13 +89,6 @@ namespace valgrind_log_tool
     void
     html_generator::generate(const valgrind_log_content & p_content)
     {
-        m_kinds.clear();
-        const auto l_collect_kind = [&](const valgrind_error & p_error)
-        {
-            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
-        };
-
-        p_content.process_errors(l_collect_kind);
         std::string l_title = "Valgrind_report";
         m_file << "<!DOCTYPE html>" << std::endl;
         m_file << "<html>" << std::endl;
@@ -85,19 +98,15 @@ namespace valgrind_log_tool
         m_file << "</head>" << std::endl;
         m_file << "<body>" << std::endl;
         m_file << "<H1>" << l_title << "</H1>" << std::endl;
-        m_file << "<H2>Kind of encountered errors</H2>" << std::endl;
 
-        m_file << "<ul>" << std::endl;
-        for(auto l_iter: m_kinds)
-        {
-            m_file << "<li>" << l_iter.first << "</li>" << std::endl;
-        }
-        m_file << "</ul>" << std::endl;
+
+        generate_kinds_html(p_content);
 
         const auto l_treat_error = [&](const valgrind_error & p_error)
         {
             this->generate_html(p_error);
         };
+        m_file << "<H2>Errors</H2>" << std::endl;
         p_content.process_errors(l_treat_error);
 
         m_file << "</body>" << std::endl;
@@ -109,10 +118,10 @@ namespace valgrind_log_tool
     void
     html_generator::generate_html(const valgrind_error & p_error)
     {
-        m_file << "<hr id=\"Error_" << p_error.get_unique() << "\">" << std::endl;
+        m_file << "<hr id=\"" << get_error_id(p_error) << "\">" << std::endl;
         m_file << "Error <b>" << p_error.get_unique() << "</b>" << std::endl;
         m_file << "<ul>" << std::endl;
-        m_file << "<li>Kind : <b>" << p_error.get_kind() << "</b></li>" << std::endl;
+        m_file << "<li>Kind : <b>" << get_kind_link(p_error.get_kind()) << "</b></li>" << std::endl;
         if("" != p_error.get_what())
         {
             m_file << "<li>What : <b>" << p_error.get_what() << "</b></li>" << std::endl;
@@ -164,6 +173,95 @@ namespace valgrind_log_tool
 
         m_file << "</table>" << std::endl;
         m_file << "</ul>" << std::endl;
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_kind_id(const std::string & p_kind) const
+    {
+        auto l_iter = m_kinds.find(p_kind);
+        assert(m_kinds.end() != l_iter);
+        return "Kind_" + std::to_string(l_iter->second);
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_kind_link(const std::string & p_kind) const
+    {
+        return "<a href=\"#" + get_kind_id(p_kind) + "\">" + p_kind + "</a>";
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_error_id(const valgrind_error & p_error) const
+    {
+        return "Error_" + std::to_string(p_error.get_unique());
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_error_link(const valgrind_error & p_error) const
+    {
+        return "<a href=\"#" + get_error_id(p_error) + "\">" + std::to_string(p_error.get_unique()) + "</a>";
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_kinds_html(const valgrind_log_content & p_content)
+    {
+        m_kinds.clear();
+        std::map<std::string, unsigned int> l_kind_number;
+        const auto l_collect_kind = [&](const valgrind_error & p_error)
+        {
+            m_kinds.insert(std::pair<std::string, unsigned int>(p_error.get_kind(), m_kinds.size()));
+            l_kind_number[p_error.get_kind()] = 0;
+        };
+
+        p_content.process_errors(l_collect_kind);
+
+        const auto l_count_kind = [&](const valgrind_error & p_error)
+        {
+            l_kind_number[p_error.get_kind()]++;
+        };
+
+        p_content.process_errors(l_count_kind);
+
+        std::multimap<unsigned int, std::string> m_sorted_kinds;
+        for(auto l_iter:l_kind_number)
+        {
+            m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
+        }
+
+        m_file << "<H2>Kind of encountered errors</H2>" << std::endl;
+
+        m_file << "<ul>" << std::endl;
+        for(auto l_iter: m_sorted_kinds)
+        {
+            bool l_first = true;
+            m_file << "<li>" << get_kind_link(l_iter.second) << std::endl;
+            const auto l_collecter_errors_per_kind = [&](const valgrind_error & p_error)
+            {
+                if(l_iter.second == p_error.get_kind())
+                {
+                    if(!l_first)
+                    {
+                        m_file << ", ";
+                    }
+                    else
+                    {
+                        l_first = false;
+                    }
+                    m_file << get_error_link(p_error);
+                }
+            };
+            m_file << "<ul><li>" << std::endl;
+            p_content.process_errors(l_collecter_errors_per_kind);
+            m_file << "</li></ul>" << std::endl;
+
+            m_file << "</li>" << std::endl;
+        }
+        m_file << "</ul>" << std::endl;
+
     }
 
 }
