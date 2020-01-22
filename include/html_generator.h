@@ -53,6 +53,17 @@ namespace valgrind_log_tool
         inline
         std::string get_kind_link(const std::string & p_kind) const;
 
+        /**
+         * Compute file id that will be used as local anchor
+         * @param p_file string representing error frame file
+         * @return string representing file id
+         */
+        inline
+        std::string get_file_id(const std::string & p_file) const;
+
+        inline
+        std::string get_file_link(const std::string & p_kind) const;
+
         inline
         std::string get_error_id(const valgrind_error & p_error) const;
 
@@ -63,10 +74,16 @@ namespace valgrind_log_tool
         void collect_kind_info(const valgrind_log_content & p_content);
 
         inline
+        void collect_file_info(const valgrind_log_content & p_content);
+
+        inline
         void generate_html(const valgrind_error & p_error);
 
         inline
         void generate_kinds_html(const valgrind_log_content & p_content);
+
+        inline
+        void generate_files_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
 
@@ -79,6 +96,16 @@ namespace valgrind_log_tool
          * Kind sorted per number of occurence
          */
         std::multimap<unsigned int, std::string> m_sorted_kinds;
+
+        /**
+         * List of files and associated id
+         */
+        std::map<std::string, unsigned int> m_files;
+
+        /**
+         * files sorted per number of occurence
+         */
+        std::multimap<unsigned int, std::string> m_sorted_files;
 
     };
 
@@ -122,6 +149,17 @@ namespace valgrind_log_tool
         }
         m_file << "</ul>" << std::endl;
 
+        collect_file_info(p_content);
+
+        m_file << "<H2>Encountered files</H2>" << std::endl;
+        m_file << "<ul>" << std::endl;
+        for(const auto & l_iter: m_sorted_files)
+        {
+            m_file << "<li>" << get_file_link(l_iter.second) << " : " << l_iter.first << "</li>" << std::endl;
+        }
+        m_file << "</ul>" << std::endl;
+
+        generate_files_html(p_content);
         generate_kinds_html(p_content);
 
         const auto l_treat_error = [&](const valgrind_error & p_error)
@@ -179,7 +217,7 @@ namespace valgrind_log_tool
             m_file << "<td>" << p_frame.get_obj() << "</td>" << std::endl;
             m_file << "<td>" << p_frame.get_fn() << "</td>" << std::endl;
             m_file << "<td>" << p_frame.get_dir() << "</td>" << std::endl;
-            m_file << "<td>" << p_frame.get_file() << "</td>" << std::endl;
+            m_file << "<td>" << (!p_frame.get_file().empty() ? get_file_link(p_frame.get_file()) : "" )<< "</td>" << std::endl;
             if(p_frame.get_line())
             {
                 m_file << "<td>" << p_frame.get_line() << "</td>" << std::endl;
@@ -211,6 +249,22 @@ namespace valgrind_log_tool
     html_generator::get_kind_link(const std::string & p_kind) const
     {
         return "<a href=\"#" + get_kind_id(p_kind) + "\">" + p_kind + "</a>";
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_file_id(const std::string & p_file) const
+    {
+        auto l_iter = m_files.find(p_file);
+        assert(m_files.end() != l_iter);
+        return "File_" + std::to_string(l_iter->second);
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_file_link(const std::string & p_kind) const
+    {
+        return "<a href=\"#" + get_file_id(p_kind) + "\">" + p_kind + "</a>";
     }
 
     //-------------------------------------------------------------------------
@@ -292,6 +346,87 @@ namespace valgrind_log_tool
         {
             m_sorted_kinds.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
         }
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::collect_file_info(const valgrind_log_content & p_content)
+    {
+        m_files.clear();
+        std::map<std::string, unsigned int> l_file_number;
+        l_file_number.clear();
+        const auto l_collected_files_from_frame = [&](const valgrind_frame & p_frame)
+        {
+            const std::string & l_file_name = p_frame.get_file();
+            if(!l_file_name.empty())
+            {
+                m_files.insert(std::pair<std::string, unsigned int>(l_file_name, m_files.size()));
+                auto l_counter_iter = l_file_number.find(l_file_name);
+                if(l_file_number.end() == l_counter_iter)
+                {
+                    l_file_number.insert(make_pair(l_file_name, 1));
+                }
+                else
+                {
+                    ++(l_counter_iter->second);
+                }
+            }
+        };
+
+        const auto l_collect_files_from_error = [&](const valgrind_error & p_error)
+        {
+            p_error.process_stack(l_collected_files_from_frame);
+        };
+        p_content.process_errors(l_collect_files_from_error);
+
+        m_sorted_files.clear();
+        for(const auto & l_iter:l_file_number)
+        {
+            m_sorted_files.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
+        }
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_files_html(const valgrind_log_content & p_content)
+    {
+        m_file << "<H2>Errors per files</H2>" << std::endl;
+        for(auto l_iter: m_sorted_files)
+        {
+            bool l_first = true;
+            m_file << "<hr id=\"" << get_file_id(l_iter.second) << "\">" << std::endl;
+            m_file << "Errors whose call stack mention file <b>" << l_iter.second << "</b>" << std::endl;
+
+            bool l_contain = false;
+            const auto l_frame_contain_file = [&](const valgrind_frame & p_frame)
+            {
+                if(l_iter.second == p_frame.get_file())
+                {
+                    l_contain = true;
+                }
+            };
+            const auto l_collecter_errors_per_file = [&](const valgrind_error & p_error)
+            {
+                l_contain = false;
+                p_error.process_stack(l_frame_contain_file);
+                if(l_contain)
+                {
+                    if(!l_first)
+                    {
+                        m_file << ", ";
+                    }
+                    else
+                    {
+                        l_first = false;
+                    }
+                    m_file << get_error_link(p_error);
+                }
+            };
+            m_file << "<ul><li>" << std::endl;
+            p_content.process_errors(l_collecter_errors_per_file);
+            m_file << "</li></ul>" << std::endl;
+        }
+
     }
 
 }
