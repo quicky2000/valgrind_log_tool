@@ -97,6 +97,17 @@ namespace valgrind_log_tool
         inline
         std::string get_directory_link(const std::string & p_directory) const;
 
+        /**
+         * Compute frame id that will be used as local anchor
+         * @param p_frame error frame
+         * @return string representing frame id
+         */
+        inline
+        std::string get_frame_id(const valgrind_frame & p_frame) const;
+
+        inline
+        std::string get_frame_link(const valgrind_frame & p_frame) const;
+
         inline
         std::string get_error_id(const valgrind_error & p_error) const;
 
@@ -119,7 +130,19 @@ namespace valgrind_log_tool
         void collect_directory_info(const valgrind_log_content & p_content);
 
         inline
+        void collect_frame_info(const valgrind_log_content & p_content);
+
+        inline
         void generate_html(const valgrind_error & p_error);
+
+        inline
+        void generate_html_frame_array_start();
+
+        inline
+        void generate_html_frame_array_end();
+
+        inline
+        void generate_html(const valgrind_frame & p_frame);
 
         inline
         void generate_kinds_html(const valgrind_log_content & p_content);
@@ -135,6 +158,9 @@ namespace valgrind_log_tool
 
         inline
         void generate_directories_html(const valgrind_log_content & p_content);
+
+        inline
+        void generate_frames_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
 
@@ -187,6 +213,16 @@ namespace valgrind_log_tool
          * directories sorted per number of occurence
          */
         std::multimap<unsigned int, std::string> m_sorted_directories;
+
+        /**
+         * List of frames and associated ids
+         */
+        std::map<uint64_t, const valgrind_frame *> m_frames;
+
+        /**
+         * Frames sorted per number of occurence
+         */
+        std::multimap<unsigned int, const valgrind_frame *> m_sorted_frames;
 
     };
 
@@ -270,11 +306,22 @@ namespace valgrind_log_tool
         }
         m_file << "</ul>" << std::endl;
 
+        collect_frame_info(p_content);
+
+        m_file << "<H2>Encountered frames</H2>" << std::endl;
+        generate_html_frame_array_start();
+        for(const auto & l_iter: m_sorted_frames)
+        {
+            generate_html(*l_iter.second);
+        }
+        generate_html_frame_array_end();
+
         generate_files_html(p_content);
         generate_kinds_html(p_content);
         generate_objects_html(p_content);
         generate_functions_html(p_content);
         generate_directories_html(p_content);
+        generate_frames_html(p_content);
 
         const auto l_treat_error = [&](const valgrind_error & p_error)
         {
@@ -314,39 +361,59 @@ namespace valgrind_log_tool
         }
         m_file << "<li>Tid: <b>" << p_error.get_tid() << "</b></li>" << std::endl;
         m_file << "<li>Call stack:</li>" << std::endl;
+
+        generate_html_frame_array_start();
+        const auto l_treat_frame = [&](const valgrind_frame & p_frame)
+        {
+            generate_html(p_frame);
+        };
+        p_error.process_stack(l_treat_frame);
+        generate_html_frame_array_end();
+
+        m_file << "</ul>" << std::endl;
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_html_frame_array_start()
+    {
         m_file << "<table border=1>" << std::endl;
         m_file << "<tr>" << std::endl;
-        //m_file << "<th>Ip</th>" << std::endl;
+        m_file << "<th>Ip</th>" << std::endl;
         m_file << "<th>Object</th>" << std::endl;
         m_file << "<th>Function</th>" << std::endl;
         m_file << "<th>Directory</th>" << std::endl;
         m_file << "<th>File</th>" << std::endl;
         m_file << "<th>Line</th>" << std::endl;
         m_file << "</tr>" << std::endl;
+    }
 
-        const auto l_treat_frame = [&](const valgrind_frame & p_frame)
-        {
-            m_file << "<tr>" << std::endl;
-            //m_file << "<td>" << p_frame.get_ip() << "</td>" << std::endl;
-            m_file << "<td>" << (!p_frame.get_obj().empty() ? get_object_link(p_frame.get_obj()) : "") << "</td>" << std::endl;
-            m_file << "<td>" << (!p_frame.get_fn().empty() ? get_function_link(p_frame.get_fn()) : "") << "</td>" << std::endl;
-            m_file << "<td>" << (!p_frame.get_dir().empty() ? get_directory_link(p_frame.get_dir()) : "") << "</td>" << std::endl;
-            m_file << "<td>" << (!p_frame.get_file().empty() ? get_file_link(p_frame.get_file()) : "" )<< "</td>" << std::endl;
-            if(p_frame.get_line())
-            {
-                m_file << "<td>" << p_frame.get_line() << "</td>" << std::endl;
-            }
-            else
-            {
-                m_file << "<td></td>" << std::endl;
-            }
-            m_file << "</tr>" << std::endl;
-        };
-
-        p_error.process_stack(l_treat_frame);
-
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_html_frame_array_end()
+    {
         m_file << "</table>" << std::endl;
-        m_file << "</ul>" << std::endl;
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_html(const valgrind_frame & p_frame)
+    {
+        m_file << "<tr>" << std::endl;
+        m_file << "<td>" << get_frame_link(p_frame) << "</td>" << std::endl;
+        m_file << "<td>" << (!p_frame.get_obj().empty() ? get_object_link(p_frame.get_obj()) : "") << "</td>" << std::endl;
+        m_file << "<td>" << (!p_frame.get_fn().empty() ? get_function_link(p_frame.get_fn()) : "") << "</td>" << std::endl;
+        m_file << "<td>" << (!p_frame.get_dir().empty() ? get_directory_link(p_frame.get_dir()) : "") << "</td>" << std::endl;
+        m_file << "<td>" << (!p_frame.get_file().empty() ? get_file_link(p_frame.get_file()) : "" )<< "</td>" << std::endl;
+        if(p_frame.get_line())
+        {
+            m_file << "<td>" << p_frame.get_line() << "</td>" << std::endl;
+        }
+        else
+        {
+            m_file << "<td></td>" << std::endl;
+        }
+        m_file << "</tr>" << std::endl;
     }
 
     //-------------------------------------------------------------------------
@@ -441,6 +508,20 @@ namespace valgrind_log_tool
     html_generator::get_error_link(const valgrind_error & p_error) const
     {
         return "<a href=\"#" + get_error_id(p_error) + "\">" + std::to_string(p_error.get_unique()) + "</a>";
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_frame_id(const valgrind_frame & p_frame) const
+    {
+        return "frame_" + std::to_string(p_frame.get_ip());
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_frame_link(const valgrind_frame & p_frame) const
+    {
+        return "<a href=\"#" + get_frame_id(p_frame) + "\">" + std::to_string(p_frame.get_ip()) + "</a>";
     }
 
     //-------------------------------------------------------------------------
@@ -874,6 +955,106 @@ namespace valgrind_log_tool
             };
             m_file << "<ul><li>" << std::endl;
             p_content.process_errors(l_collecter_errors_per_directory);
+            m_file << "</li></ul>" << std::endl;
+        }
+
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::collect_frame_info(const valgrind_log_content & p_content)
+    {
+        // List all frames
+        m_frames.clear();
+        std::map<const valgrind_frame *, unsigned int> l_frame_number;
+        l_frame_number.clear();
+        const auto l_collected_frames_from_frame = [&](const valgrind_frame & p_frame)
+        {
+            const uint64_t & l_frame_ip = p_frame.get_ip();
+            if(!m_frames.count(l_frame_ip))
+            {
+                m_frames.insert(std::pair<uint64_t, const valgrind_frame *>(l_frame_ip, &p_frame));
+                l_frame_number.insert(std::make_pair(&p_frame, 0));
+            }
+        };
+
+        const auto l_collect_frames_from_error = [&](const valgrind_error & p_error)
+        {
+            p_error.process_stack(l_collected_frames_from_frame);
+        };
+        p_content.process_errors(l_collect_frames_from_error);
+
+        // Count frames (once per error)
+        for(auto l_iter: m_frames)
+        {
+            const auto l_count_frames_in_errors = [&](const valgrind_error & p_error)
+            {
+                bool l_appear_in_error_stack = false;
+                const auto l_search_frames_in_frame = [&](const valgrind_frame & p_frame)
+                {
+                    if (l_iter.first == p_frame.get_ip())
+                    {
+                        l_appear_in_error_stack = true;
+                    }
+                };
+                p_error.process_stack(l_search_frames_in_frame);
+                if(l_appear_in_error_stack)
+                {
+                    l_frame_number[l_iter.second]++;
+                }
+            };
+            p_content.process_errors(l_count_frames_in_errors);
+        }
+        m_sorted_frames.clear();
+        for(const auto & l_iter:l_frame_number)
+        {
+            m_sorted_frames.insert(std::make_pair(l_iter.second, l_iter.first));
+        }
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_frames_html(const valgrind_log_content & p_content)
+    {
+        m_file << "<H2>Errors per frames</H2>" << std::endl;
+        for(const auto & l_iter: m_sorted_frames)
+        {
+            bool l_first = true;
+            const uint64_t l_frame_ip = l_iter.second->get_ip();
+            m_file << "<hr id=\"" << get_frame_id(*l_iter.second) << "\">" << std::endl;
+            m_file << "Errors whose call stack mention Frame <b>" << l_frame_ip << "</b>" << std::endl;
+
+            generate_html_frame_array_start();
+            generate_html(*l_iter.second);
+            generate_html_frame_array_end();
+
+            bool l_contain = false;
+            const auto l_is_searched_frame = [&](const valgrind_frame & p_frame)
+            {
+                if(l_frame_ip == p_frame.get_ip())
+                {
+                    l_contain = true;
+                }
+            };
+            const auto l_collecter_errors_per_frame = [&](const valgrind_error & p_error)
+            {
+                l_contain = false;
+                p_error.process_stack(l_is_searched_frame);
+                if(l_contain)
+                {
+                    if(!l_first)
+                    {
+                        m_file << ", ";
+                    }
+                    else
+                    {
+                        l_first = false;
+                    }
+                    m_file << get_error_link(p_error);
+                }
+            };
+            m_file << "<ul><li>" << std::endl;
+            p_content.process_errors(l_collecter_errors_per_frame);
             m_file << "</li></ul>" << std::endl;
         }
 
