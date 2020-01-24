@@ -269,9 +269,19 @@ namespace valgrind_log_tool
         m_file << "<body>" << std::endl;
         m_file << "<H1>" << l_title << "</H1>" << std::endl;
 
+        m_file << "<H2>Summary</H2>" << std::endl;
+        m_file << "<ul>" << std::endl;
+        m_file << R"(<li><a href="#Encountered_Kinds">Encountered Kinds</a></li>)";
+        m_file << R"(<li><a href="#Encountered_Files">Encountered Files</a></li>)";
+        m_file << R"(<li><a href="#Encountered_Objects">Encountered Objects</a></li>)";
+        m_file << R"(<li><a href="#Encountered_Functions">Encountered Functions</a></li>)";
+        m_file << R"(<li><a href="#Encountered_Errors">Encountered Errors</a></li>)";
+        m_file << R"(<li><a href="#Encountered_Frames">Encountered Frames</a></li>)";
+        m_file << "</ul>" << std::endl;
+
         collect_kind_info(p_content);
 
-        m_file << "<H2>Encountered kinds</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Kinds">Encountered kinds</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_kinds)
         {
@@ -281,7 +291,7 @@ namespace valgrind_log_tool
 
         collect_file_info(p_content);
 
-        m_file << "<H2>Encountered files</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Files">Encountered files</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_files)
         {
@@ -291,7 +301,7 @@ namespace valgrind_log_tool
 
         collect_object_info(p_content);
 
-        m_file << "<H2>Encountered Objects</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Objects">Encountered Objects</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_objects)
         {
@@ -301,7 +311,7 @@ namespace valgrind_log_tool
 
         collect_function_info(p_content);
 
-        m_file << "<H2>Encountered functions</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Functions">Encountered Functions</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_functions)
         {
@@ -311,7 +321,7 @@ namespace valgrind_log_tool
 
         collect_directory_info(p_content);
 
-        m_file << "<H2>Encountered directories</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Directories">Encountered Directories</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_directories)
         {
@@ -321,7 +331,7 @@ namespace valgrind_log_tool
 
         collect_error_info(p_content);
 
-        m_file << "<H2>Encountered errors</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Errors">Encountered Errors</H2>)" << std::endl;
         m_file << "<ul>" << std::endl;
         for(const auto & l_iter: m_sorted_errors)
         {
@@ -333,7 +343,7 @@ namespace valgrind_log_tool
 
         collect_frame_info(p_content);
 
-        m_file << "<H2>Encountered frames</H2>" << std::endl;
+        m_file << R"(<H2 id="Encountered_Frames">Encountered Frames</H2>)" << std::endl;
         generate_html_frame_array_start();
         for(const auto & l_iter: m_sorted_frames)
         {
