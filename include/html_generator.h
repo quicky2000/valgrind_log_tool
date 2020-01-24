@@ -115,6 +115,9 @@ namespace valgrind_log_tool
         std::string get_error_link(const valgrind_error & p_error) const;
 
         inline
+        void collect_error_info(const valgrind_log_content & p_content);
+
+        inline
         void collect_kind_info(const valgrind_log_content & p_content);
 
         inline
@@ -163,6 +166,16 @@ namespace valgrind_log_tool
         void generate_frames_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
+
+        /**
+         * List of errors and associated id
+         */
+        std::map<uint64_t, const valgrind_error *> m_errors;
+
+        /**
+         * Kind sorted per number of occurence
+         */
+        std::multimap<unsigned int, uint64_t> m_sorted_errors;
 
         /**
          * List of kind and associated id
@@ -306,6 +319,18 @@ namespace valgrind_log_tool
         }
         m_file << "</ul>" << std::endl;
 
+        collect_error_info(p_content);
+
+        m_file << "<H2>Encountered errors</H2>" << std::endl;
+        m_file << "<ul>" << std::endl;
+        for(const auto & l_iter: m_sorted_errors)
+        {
+
+            const valgrind_error & l_error = *m_errors[l_iter.second];
+            m_file << "<li> Error" << get_error_link(l_error) << "(" << get_kind_link(l_error.get_kind()) << ") : " << l_iter.first << "</li>" << std::endl;
+        }
+        m_file << "</ul>" << std::endl;
+
         collect_frame_info(p_content);
 
         m_file << "<H2>Encountered frames</H2>" << std::endl;
@@ -315,6 +340,7 @@ namespace valgrind_log_tool
             generate_html(*l_iter.second);
         }
         generate_html_frame_array_end();
+
 
         generate_files_html(p_content);
         generate_kinds_html(p_content);
@@ -554,6 +580,25 @@ namespace valgrind_log_tool
             m_file << "</li></ul>" << std::endl;
         }
 
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::collect_error_info(const valgrind_log_content & p_content)
+    {
+        m_errors.clear();
+        const auto l_collect_errors = [&](const valgrind_error & p_error)
+        {
+            m_errors.insert(std::make_pair(p_error.get_unique(), &p_error));
+        };
+        p_content.process_errors(l_collect_errors);
+
+        m_sorted_errors.clear();
+        const auto l_collect_error_counts = [&](const std::pair<uint64_t, uint32_t> & p_pair)
+        {
+            m_sorted_errors.insert(std::make_pair(p_pair.second, p_pair.first));
+        };
+        p_content.process_error_counts(l_collect_error_counts);
     }
 
     //-------------------------------------------------------------------------

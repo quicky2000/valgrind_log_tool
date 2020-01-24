@@ -24,6 +24,7 @@
 #include <map>
 #include <cinttypes>
 #include <functional>
+#include <algorithm>
 
 namespace valgrind_log_tool
 {
@@ -41,6 +42,9 @@ namespace valgrind_log_tool
 
         inline
         void process_errors(const std::function<void(const valgrind_error&)> & p_func) const;
+
+        inline
+        void process_error_counts(const std::function<void(const std::pair<uint64_t, uint32_t> &)> & p_func) const;
 
         inline
         ~valgrind_log_content();
@@ -83,6 +87,13 @@ namespace valgrind_log_tool
         {
             p_func(*l_iter);
         }
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    valgrind_log_content::process_error_counts(const std::function<void(const std::pair<uint64_t, uint32_t> &)> & p_func) const
+    {
+        for_each(m_error_counts.begin(), m_error_counts.end(), p_func);
     }
 }
 #endif //VALGRIND_LOG_TOOL_VALGRIND_LOG_CONTENT_H
