@@ -86,6 +86,17 @@ namespace valgrind_log_tool
         inline
         std::string get_function_link(const std::string & p_function) const;
 
+        /**
+         * Compute directory id that will be used as local anchor
+         * @param p_directory string representing error frame directory
+         * @return string representing directory id
+         */
+        inline
+        std::string get_directory_id(const std::string & p_directory) const;
+
+        inline
+        std::string get_directory_link(const std::string & p_directory) const;
+
         inline
         std::string get_error_id(const valgrind_error & p_error) const;
 
@@ -105,6 +116,9 @@ namespace valgrind_log_tool
         void collect_function_info(const valgrind_log_content & p_content);
 
         inline
+        void collect_directory_info(const valgrind_log_content & p_content);
+
+        inline
         void generate_html(const valgrind_error & p_error);
 
         inline
@@ -118,6 +132,9 @@ namespace valgrind_log_tool
 
         inline
         void generate_functions_html(const valgrind_log_content & p_content);
+
+        inline
+        void generate_directories_html(const valgrind_log_content & p_content);
 
         std::ofstream m_file;
 
@@ -160,6 +177,16 @@ namespace valgrind_log_tool
          * functions sorted per number of occurence
          */
         std::multimap<unsigned int, std::string> m_sorted_functions;
+
+        /**
+         * List of frame directories and associated id
+         */
+        std::map<std::string, unsigned int> m_directories;
+
+        /**
+         * directories sorted per number of occurence
+         */
+        std::multimap<unsigned int, std::string> m_sorted_directories;
 
     };
 
@@ -233,10 +260,21 @@ namespace valgrind_log_tool
         }
         m_file << "</ul>" << std::endl;
 
+        collect_directory_info(p_content);
+
+        m_file << "<H2>Encountered directories</H2>" << std::endl;
+        m_file << "<ul>" << std::endl;
+        for(const auto & l_iter: m_sorted_directories)
+        {
+            m_file << "<li>" << get_directory_link(l_iter.second) << " : " << l_iter.first << "</li>" << std::endl;
+        }
+        m_file << "</ul>" << std::endl;
+
         generate_files_html(p_content);
         generate_kinds_html(p_content);
         generate_objects_html(p_content);
         generate_functions_html(p_content);
+        generate_directories_html(p_content);
 
         const auto l_treat_error = [&](const valgrind_error & p_error)
         {
@@ -292,7 +330,7 @@ namespace valgrind_log_tool
             //m_file << "<td>" << p_frame.get_ip() << "</td>" << std::endl;
             m_file << "<td>" << (!p_frame.get_obj().empty() ? get_object_link(p_frame.get_obj()) : "") << "</td>" << std::endl;
             m_file << "<td>" << (!p_frame.get_fn().empty() ? get_function_link(p_frame.get_fn()) : "") << "</td>" << std::endl;
-            m_file << "<td>" << p_frame.get_dir() << "</td>" << std::endl;
+            m_file << "<td>" << (!p_frame.get_dir().empty() ? get_directory_link(p_frame.get_dir()) : "") << "</td>" << std::endl;
             m_file << "<td>" << (!p_frame.get_file().empty() ? get_file_link(p_frame.get_file()) : "" )<< "</td>" << std::endl;
             if(p_frame.get_line())
             {
@@ -373,6 +411,22 @@ namespace valgrind_log_tool
     html_generator::get_function_link(const std::string & p_function) const
     {
         return "<a href=\"#" + get_function_id(p_function) + "\">" + p_function + "</a>";
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_directory_id(const std::string & p_directory) const
+    {
+        auto l_iter = m_directories.find(p_directory);
+        assert(m_directories.end() != l_iter);
+        return "directory_" + std::to_string(l_iter->second);
+    }
+
+    //-------------------------------------------------------------------------
+    std::string
+    html_generator::get_directory_link(const std::string & p_directory) const
+    {
+        return "<a href=\"#" + get_directory_id(p_directory) + "\">" + p_directory + "</a>";
     }
 
     //-------------------------------------------------------------------------
@@ -724,6 +778,102 @@ namespace valgrind_log_tool
             };
             m_file << "<ul><li>" << std::endl;
             p_content.process_errors(l_collecter_errors_per_function);
+            m_file << "</li></ul>" << std::endl;
+        }
+
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::collect_directory_info(const valgrind_log_content & p_content)
+    {
+        // List all directories
+        m_directories.clear();
+        std::map<std::string, unsigned int> l_directory_number;
+        l_directory_number.clear();
+        const auto l_collected_directories_from_frame = [&](const valgrind_frame & p_frame)
+        {
+            const std::string & l_directory_name = p_frame.get_dir();
+            if(!l_directory_name.empty() && !m_directories.count(l_directory_name))
+            {
+                m_directories.insert(std::pair<std::string, unsigned int>(l_directory_name, m_directories.size()));
+                l_directory_number.insert(make_pair(l_directory_name, 0));
+            }
+        };
+
+        const auto l_collect_directories_from_error = [&](const valgrind_error & p_error)
+        {
+            p_error.process_stack(l_collected_directories_from_frame);
+        };
+        p_content.process_errors(l_collect_directories_from_error);
+
+        // Count directories (once per error)
+        for(auto l_iter: m_directories)
+        {
+            const auto l_count_directory_in_errors = [&](const valgrind_error & p_error)
+            {
+                bool l_appear_in_error_stack = false;
+                const auto l_search_directories_in_frame = [&](const valgrind_frame & p_frame)
+                {
+                    if (l_iter.first == p_frame.get_dir())
+                    {
+                        l_appear_in_error_stack = true;
+                    }
+                };
+                p_error.process_stack(l_search_directories_in_frame);
+                if(l_appear_in_error_stack)
+                {
+                    l_directory_number[l_iter.first]++;
+                }
+            };
+            p_content.process_errors(l_count_directory_in_errors);
+        }
+        m_sorted_directories.clear();
+        for(const auto & l_iter:l_directory_number)
+        {
+            m_sorted_directories.insert(std::pair<unsigned int, std::string>(l_iter.second, l_iter.first));
+        }
+    }
+
+    //-------------------------------------------------------------------------
+    void
+    html_generator::generate_directories_html(const valgrind_log_content & p_content)
+    {
+        m_file << "<H2>Errors per directories</H2>" << std::endl;
+        for(const auto & l_iter: m_sorted_directories)
+        {
+            bool l_first = true;
+            const std::string & l_directory_name = l_iter.second;
+            m_file << "<hr id=\"" << get_directory_id(l_directory_name) << "\">" << std::endl;
+            m_file << "Errors whose call stack mention directory <b>" << l_directory_name << "</b>" << std::endl;
+
+            bool l_contain = false;
+            const auto l_frame_contain_directory = [&](const valgrind_frame & p_frame)
+            {
+                if(l_directory_name == p_frame.get_dir())
+                {
+                    l_contain = true;
+                }
+            };
+            const auto l_collecter_errors_per_directory = [&](const valgrind_error & p_error)
+            {
+                l_contain = false;
+                p_error.process_stack(l_frame_contain_directory);
+                if(l_contain)
+                {
+                    if(!l_first)
+                    {
+                        m_file << ", ";
+                    }
+                    else
+                    {
+                        l_first = false;
+                    }
+                    m_file << get_error_link(p_error);
+                }
+            };
+            m_file << "<ul><li>" << std::endl;
+            p_content.process_errors(l_collecter_errors_per_directory);
             m_file << "</li></ul>" << std::endl;
         }
 
